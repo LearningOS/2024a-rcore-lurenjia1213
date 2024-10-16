@@ -53,7 +53,15 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 /// YOUR JOB: Finish sys_task_info to pass testcases
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info");
-
+    
+    unsafe {
+        *_ti=TaskInfo{
+            status:TaskStatus::Running,
+            syscall_times:,
+            time:1//get_time_us()-first_time
+        }
+    }
+    0
 }
 /*
 pub struct TaskInfo {
@@ -64,9 +72,12 @@ pub struct TaskInfo {
     /// Total running time of task
     time: usize,
 }
-对于 TaskStatus,find_next_task可以作为一定参考
-对于 syscall_times 貌似是没有路子的，得自己实现
+对于 TaskStatus,能执行系统调用，当然是在running
+对于 syscall_times 貌似是没有路子的，得自己实现 ，这是桶计数，即意味着，这个数组下标为i的值，就是调用号为i的系统调用的调用次数
+晕死，以后好好看文档
 time：有现成函数
 
-问题:当前任务？？？
+问题:当前任务？？？ 对于当前任务，仍旧可以参考
+我们能不能通过遍历状态，然后找到running的任务，作点什么？
+对于时间，我们仍旧需要知道当前的task？
 */

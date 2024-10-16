@@ -9,6 +9,8 @@ pub struct TaskControlBlock {
     pub task_status: TaskStatus,
     /// The task context
     pub task_cx: TaskContext,
+    pub first_time_run:usize//第一次运行的时间,那么
+
 }
 
 /// The status of a task
