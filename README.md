@@ -1,3 +1,5 @@
+# 特别注意：qemu已经更新到8，所以必须使用最新的rustsbi
+
 # rCore-Camp-Code-2024A
 
 ### Code
