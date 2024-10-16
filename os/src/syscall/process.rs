@@ -58,7 +58,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
         *_ti=TaskInfo{
             status:TaskStatus::Running,
             syscall_times:,
-            time:1//get_time_us()-first_time
+            time:1//get_time_ms()-first_time
         }
     }
     0
@@ -80,4 +80,14 @@ time：有现成函数
 问题:当前任务？？？ 对于当前任务，仍旧可以参考
 我们能不能通过遍历状态，然后找到running的任务，作点什么？
 对于时间，我们仍旧需要知道当前的task？
+https://github.com/weston-embedded/uC-OS2
+
+
+run_next_task
+TaskManager，TaskManagerInner
+参考
+mark_current_suspended
+
+如何计数？
+syscall
 */
