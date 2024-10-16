@@ -81,13 +81,15 @@ impl AppManager {
         );
         let app_dst = core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, app_src.len());
         app_dst.copy_from_slice(app_src);
-        // Memory fence about fetching the instruction memory
-        // It is guaranteed that a subsequent instruction fetch must
-        // observes all previous writes to the instruction memory.
-        // Therefore, fence.i must be executed after we have loaded
-        // the code of the next app into the instruction memory.
-        // See also: riscv non-priv spec chapter 3, 'Zifencei' extension.
+        /*
+        关于获取指令内存的内存隔离 保证后续指令获取必须遵守对指令内存的所有先前写入。
+        因此，在我们将下一个应用程序的代码加载到指令内存后，必须执行 fence.i。
+        另请参阅：riscv non-priv spec 第 3 章，“Zifencei”扩展。
+        used to synchronize the instruction and data streams. 
+        
+        */
         asm!("fence.i");
+        /*x86 ept hook ?，JIT？pipeline?*/
     }
 
     pub fn get_current_app(&self) -> usize {

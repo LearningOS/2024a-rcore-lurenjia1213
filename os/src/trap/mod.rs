@@ -29,9 +29,9 @@ global_asm!(include_str!("trap.S"));
 pub fn init() {
     extern "C" {
         fn __alltraps();
-    }
+    }//
     unsafe {
-        stvec::write(__alltraps as usize, TrapMode::Direct);
+        stvec::write(__alltraps as usize, TrapMode::Direct);//配置stvec寄存器，地址为__alltraps，这个玩意在trap.S有写
     }
 }
 

@@ -18,3 +18,4 @@ fn panic(info: &PanicInfo) -> ! {
     }
     shutdown()
 }
+/*如果panic，直接shutdown，（带错误 */

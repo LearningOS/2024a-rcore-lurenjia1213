@@ -35,6 +35,7 @@ __alltraps:
     sd t2, 2*8(sp)
     # set input argument of trap_handler(cx: &mut TrapContext)
     mv a0, sp
+    #保存上下文，随后调用处理函数，考虑一下权限切换？
     call trap_handler
 
 __restore:
@@ -46,6 +47,7 @@ __restore:
     ld t0, 32*8(sp)
     ld t1, 33*8(sp)
     ld t2, 2*8(sp)
+    #写入参数到状态寄存器
     csrw sstatus, t0
     csrw sepc, t1
     csrw sscratch, t2
@@ -61,4 +63,5 @@ __restore:
     addi sp, sp, 34*8
     # now sp->kernel stack, sscratch->user stack
     csrrw sp, sscratch, sp
-    sret
+    sret#从s-mode返回
+#上下文恢复

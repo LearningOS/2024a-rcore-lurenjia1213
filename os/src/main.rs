@@ -65,7 +65,7 @@ pub fn rust_main() -> ! {
         fn ebss(); // end addr of BSS segment
         fn boot_stack_lower_bound(); // stack lower bound
         fn boot_stack_top(); // stack top
-    }
+    }//单纯的导出地址
     clear_bss();
     logging::init();
     println!("[kernel] Hello, world!");
@@ -87,7 +87,7 @@ pub fn rust_main() -> ! {
         boot_stack_top as usize, boot_stack_lower_bound as usize
     );
     error!("[kernel] .bss [{:#x}, {:#x})", sbss as usize, ebss as usize);
-    trap::init();
+    trap::init();//初始化trap
     batch::init();
     batch::run_next_app();
 }
