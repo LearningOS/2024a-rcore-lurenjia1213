@@ -11,6 +11,23 @@
 
 以时间片轮转算法调度用户程序，实现资源的时分复用。
 
+
+获取任务信息¶
+ch3 中，我们的系统已经能够支持多个任务分时轮流运行，我们希望引入一个新的系统调用 sys_task_info 以获取当前任务的信息，定义如下：
+
+fn sys_task_info(ti: *mut TaskInfo) -> isize
+syscall ID: 410
+------------------------------------------------------------------
+查询当前正在执行的任务信息，任务信息包括任务控制块相关信息（任务状态）、任务使用的系统调用及调用次数、系统调用时刻距离任务第一次被调度时刻的时长（单位ms）。
+
+struct TaskInfo {
+    status: TaskStatus,
+    syscall_times: [u32; MAX_SYSCALL_NUM],
+    time: usize
+}
+
+
+
 ### Code
 - [Soure Code of labs for 2024A](https://github.com/LearningOS/rCore-Camp-Code-2024A)
 ### Documents
