@@ -52,7 +52,7 @@ fn clear_bss() {
 }
 
 /// the rust entry-point of os
-#[no_mangle]
+#[no_mangle]//禁用名称修改，以便链接
 pub fn rust_main() -> ! {
     extern "C" {
         fn stext(); // begin addr of text segment
