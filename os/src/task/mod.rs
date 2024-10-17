@@ -17,6 +17,7 @@ mod task;
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
+use crate::timer::get_time_ms;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -78,16 +79,27 @@ impl TaskManager {
     ///
     /// Generally, the first task in task list is an idle task (we call it zero process later).
     /// But in ch3, we load apps statically, so the first task is a real app.
+    pub fn get_first_time_run(&self)->usize{
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let ret=inner.tasks[current].first_time_run;
+        drop(inner);
+        ret
+    }
+    
+/*************************************************************************************************** */
     fn run_first_task(&self) -> ! {
         let mut inner = self.inner.exclusive_access();
         let task0 = &mut inner.tasks[0];
         task0.task_status = TaskStatus::Running;
+        task0.first_time_run=get_time_ms();/******************************************************************************* */
         let next_task_cx_ptr = &task0.task_cx as *const TaskContext;
         drop(inner);
         let mut _unused = TaskContext::zero_init();
         // before this, we should drop local variables that must be dropped manually
         unsafe {
             __switch(&mut _unused as *mut TaskContext, next_task_cx_ptr);
+
         }
         panic!("unreachable in run_first_task!");
     }
@@ -123,11 +135,15 @@ impl TaskManager {
         if let Some(next) = self.find_next_task() {
             let mut inner = self.inner.exclusive_access();
             let current = inner.current_task;
+            
+
+            if inner.tasks[next].task_status==TaskStatus::UnInit{ inner.tasks[next].first_time_run=get_time_ms();}//鬼知道这个函数会在进程的啥状态下执行？
+            /*搜了一下代码，这个UnInit应该就是为了干这个的 */
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
-            drop(inner);
+            drop(inner);//为毛呢？因为要切换去U-mode。。。这个函数甚至不会返回，奇怪的问题，那么这个函数的栈帧会被咋办？ */
             // before this, we should drop local variables that must be dropped manually
             unsafe {
                 __switch(current_task_cx_ptr, next_task_cx_ptr);

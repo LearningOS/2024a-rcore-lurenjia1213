@@ -9,8 +9,10 @@ pub struct TaskControlBlock {
     pub task_status: TaskStatus,
     /// The task context
     pub task_cx: TaskContext,
-    pub first_time_run:usize,//第一次运行的时间
-    pub syscall_times:[u32;MAX_SYSCALL_NUM]//第一次运行的时间,那么
+    ///第一次运行的时间
+    pub first_time_run:usize,
+    ///第一次运行的时间,那么
+    pub syscall_times:[u32;MAX_SYSCALL_NUM]
 }
 
 /// The status of a task

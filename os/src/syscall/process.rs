@@ -1,8 +1,8 @@
 //! Process management syscalls
 use crate::{
     config::MAX_SYSCALL_NUM,
-    task::{exit_current_and_run_next, suspend_current_and_run_next, TaskStatus},
-    timer::get_time_us,
+    task::{exit_current_and_run_next, suspend_current_and_run_next, TASK_MANAGER, TaskStatus},
+    timer::{get_time_ms, get_time_us},
 };
 
 #[repr(C)]
@@ -57,8 +57,8 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     unsafe {
         *_ti=TaskInfo{
             status:TaskStatus::Running,
-            syscall_times:,
-            time:1//get_time_ms()-first_time
+            syscall_times:[500;500],
+            time:get_time_ms()-TASK_MANAGER.get_first_time_run(),
         }
     }
     0
@@ -78,7 +78,7 @@ pub struct TaskInfo {
 time：有现成函数
 
 问题:当前任务？？？ 对于当前任务，仍旧可以参考
-我们能不能通过遍历状态，然后找到running的任务，作点什么？
+我们能不能通过遍历状态，然后找到running的任务，作点什么？ 傻逼，弄个东西存下来就好了
 对于时间，我们仍旧需要知道当前的task？
 https://github.com/weston-embedded/uC-OS2
 
@@ -88,6 +88,10 @@ TaskManager，TaskManagerInner
 参考
 mark_current_suspended
 
+inner.current_task !!!!!!!!!!!
+
 如何计数？
 syscall
+
+
 */
