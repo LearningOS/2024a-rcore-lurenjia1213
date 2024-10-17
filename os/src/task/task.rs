@@ -1,7 +1,7 @@
 //! Types related to task management
-
+use crate::config::MAX_SYSCALL_NUM;
 use super::TaskContext;
-pub const MAX_SYSCALL_NUM: usize = 500;
+//pub const MAX_SYSCALL_NUM: usize = 500;
 /// The task control block (TCB) of a task.
 #[derive(Copy, Clone)]
 pub struct TaskControlBlock {

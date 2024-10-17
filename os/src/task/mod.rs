@@ -23,7 +23,7 @@ use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
 
 pub use context::TaskContext;
-
+use crate::config::MAX_SYSCALL_NUM;
 /// The task manager, where all the tasks are managed.
 ///
 /// Functions implemented on `TaskManager` deals with all task state transitions
@@ -103,7 +103,22 @@ impl TaskManager {
         }
         panic!("unreachable in run_first_task!");
     }
-
+    ///获取系统调用计数
+    pub fn get_syscall_times(&self)->[u32;MAX_SYSCALL_NUM]{
+        let  inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let ret=inner.tasks[current].syscall_times;
+        drop(inner);
+        ret
+    }
+    ///接下来添加计数器
+    pub fn syscall_counter(&self,syscall_id:usize){
+        let  mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_times[syscall_id]+=1;
+        //drop(inner);
+        //ret
+    }
     /// Change the status of current `Running` task into `Ready`.
     fn mark_current_suspended(&self) {
         let mut inner = self.inner.exclusive_access();

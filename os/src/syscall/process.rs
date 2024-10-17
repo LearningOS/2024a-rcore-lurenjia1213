@@ -57,7 +57,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     unsafe {
         *_ti=TaskInfo{
             status:TaskStatus::Running,
-            syscall_times:[500;500],
+            syscall_times:TASK_MANAGER.get_syscall_times(),
             time:get_time_ms()-TASK_MANAGER.get_first_time_run(),
         }
     }
