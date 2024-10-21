@@ -26,7 +26,7 @@ extern "C" {
     fn ebss();
     fn ekernel();
     fn strampoline();
-}
+}//各种奇怪的地址
 
 lazy_static! {
     /// The kernel's initial memory mapping(kernel address space)
@@ -35,7 +35,8 @@ lazy_static! {
 }
 /// address space
 pub struct MemorySet {
-    page_table: PageTable,
+    ///
+    pub page_table: PageTable,
     areas: Vec<MapArea>,
 }
 

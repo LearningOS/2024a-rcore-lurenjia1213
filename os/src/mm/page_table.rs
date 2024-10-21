@@ -4,17 +4,24 @@ use super::{frame_alloc, FrameTracker, PhysPageNum, StepByOne, VirtAddr, VirtPag
 use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::*;
-
 bitflags! {
-    /// page table entry flags
+    ///page table entry flags
     pub struct PTEFlags: u8 {
+        ///有效 若 V = 0，则任何遍历到此页表项的虚址转换操作都会导致页错误。
         const V = 1 << 0;
+        ///读
         const R = 1 << 1;
+        ///写
         const W = 1 << 2;
+        ///执行
         const X = 1 << 3;
+        ///U-mode
         const U = 1 << 4;
+        ///G 位表示这个映射是否对所有虚址空间有效，硬件可以用这个信息来提高地址转 换的性能。这一位通常只用于属于操作系统的页面.
         const G = 1 << 5;
+        ///A 位表示自从上次 A 位被清除以来，该页面是否被访问过
         const A = 1 << 6;
+        ///脏标志
         const D = 1 << 7;
     }
 }
@@ -86,6 +93,9 @@ impl PageTable {
             root_ppn: PhysPageNum::from(satp & ((1usize << 44) - 1)),
             frames: Vec::new(),
         }
+        /*from_token 可以临时创建一个专用来手动查页表的 PageTable ，它仅有一个从传入的 
+        satp token 中得到的多级页表根节点的物理页号，它的 frames 字段为空，也即不实际控制任何资源；
+        */
     }
     /// Find PageTableEntry by VirtPageNum, create a frame for a 4KB page table if not exist
     fn find_pte_create(&mut self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
@@ -170,4 +180,14 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
         start = end_va.into();
     }
     v
+}
+
+///虚拟转物理。
+pub fn trans_addr_v2p(token:usize,ptr:usize)->usize{
+    let page_table = PageTable::from_token(token);
+    let vpa=VirtAddr::from(ptr);
+    let vpn=vpa.floor();
+    let ppn=page_table.translate(vpn).unwrap().ppn();
+    let ppa=usize::from(ppn)<<12|vpa.page_offset();//4k页，故页偏移地址是12位2^12=4096
+    return ppa.into();
 }

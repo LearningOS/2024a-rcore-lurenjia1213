@@ -21,9 +21,10 @@ use alloc::vec::Vec;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
-
+use crate::mm::{VirtAddr,MapPermission, VirtPageNum};
 pub use context::TaskContext;
-
+use crate::config::MAX_SYSCALL_NUM;
+use crate::timer::get_time_ms;
 /// The task manager, where all the tasks are managed.
 ///
 /// Functions implemented on `TaskManager` deals with all task state transitions
@@ -79,6 +80,7 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let next_task = &mut inner.tasks[0];
         next_task.task_status = TaskStatus::Running;
+        next_task.first_time_run =get_time_ms();
         let next_task_cx_ptr = &next_task.task_cx as *const TaskContext;
         drop(inner);
         let mut _unused = TaskContext::zero_init();
@@ -139,6 +141,8 @@ impl TaskManager {
         if let Some(next) = self.find_next_task() {
             let mut inner = self.inner.exclusive_access();
             let current = inner.current_task;
+
+            if inner.tasks[next].task_status==TaskStatus::UnInit{inner.tasks[next].first_time_run=get_time_ms();}
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
@@ -153,6 +157,57 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    ///imp insert_framed_area
+    pub fn insert_framed_area(
+        & self,
+        start_va: VirtAddr,
+        end_va: VirtAddr,
+        permission: MapPermission,
+    ) {
+        let mut inner=self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].memory_set.insert_framed_area(start_va, end_va, permission);
+    }
+    ///
+    pub fn unmap_framed_area(
+        & self,
+        start_va: VirtAddr,
+        end_va: VirtAddr,
+        //permission: MapPermission,
+    ) {
+        let mut inner=self.inner.exclusive_access();
+        let current = inner.current_task;
+        let start_vpn :VirtPageNum=start_va.floor();
+        let end_vpn :VirtPageNum=end_va.ceil().0.into();
+        for vpn in start_vpn.0..end_vpn.0{
+            inner.tasks[current].memory_set.page_table.unmap(vpn.into());
+        }
+    }
+    ///看ch3
+    pub fn syscall_counter(&self,syscall_id:usize){
+        let  mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_times[syscall_id]+=1;
+        //drop(inner);
+        //ret
+    }
+    ///ch3
+    pub fn get_first_time_run(&self)->usize{
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let ret=inner.tasks[current].first_time_run;
+        drop(inner);
+        ret
+    }
+    ///获取系统调用计数
+    pub fn get_syscall_times(&self)->[u32;MAX_SYSCALL_NUM]{
+        let  inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let ret=inner.tasks[current].syscall_times;
+        drop(inner);
+        ret
+    }    
 }
 
 /// Run the first task in task list.
@@ -201,4 +256,12 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+///impl insert_framed_area
+pub fn insert_framed_area(start: VirtAddr, end: VirtAddr, permission: MapPermission) {
+    TASK_MANAGER.insert_framed_area(start, end, permission);
+}
+///impl 
+pub fn unmap_framed_area(start: VirtAddr, end: VirtAddr){
+    TASK_MANAGER.unmap_framed_area(start, end);
 }

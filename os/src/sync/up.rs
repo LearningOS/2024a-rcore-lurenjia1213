@@ -23,7 +23,7 @@ impl<T> UPSafeCell<T> {
             inner: RefCell::new(value),
         }
     }
-    /// Panic if the data has been borrowed.
+    /// Panic if the data has been borrowed.获取其内部对象的可变引用
     pub fn exclusive_access(&self) -> RefMut<'_, T> {
         self.inner.borrow_mut()
     }

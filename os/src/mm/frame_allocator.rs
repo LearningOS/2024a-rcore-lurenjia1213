@@ -38,7 +38,7 @@ impl Drop for FrameTracker {
     }
 }
 
-trait FrameAllocator {
+trait FrameAllocator { //页帧管理器
     fn new() -> Self;
     fn alloc(&mut self) -> Option<PhysPageNum>;
     fn dealloc(&mut self, ppn: PhysPageNum);
@@ -62,7 +62,7 @@ impl FrameAllocator for StackFrameAllocator {
         Self {
             current: 0,
             end: 0,
-            recycled: Vec::new(),
+            recycled: Vec::new(),//塞得ppn，物理页号
         }
     }
     fn alloc(&mut self) -> Option<PhysPageNum> {
@@ -96,11 +96,12 @@ lazy_static! {
 /// initiate the frame allocator using `ekernel` and `MEMORY_END`
 pub fn init_frame_allocator() {
     extern "C" {
-        fn ekernel();
+        fn ekernel();//符号 ekernel 指明了 内核数据的终止物理地址，在它之后的物理内存都是可用的
     }
     FRAME_ALLOCATOR.exclusive_access().init(
         PhysAddr::from(ekernel as usize).ceil(),
         PhysAddr::from(MEMORY_END).floor(),
+        //整块物理内存的终止物理地址为 0x80800000，起始物理地址为 0x80000000，可用内存大小设置为 
     );
 }
 
