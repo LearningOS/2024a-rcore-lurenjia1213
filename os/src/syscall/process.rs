@@ -1,5 +1,6 @@
 //! Process management syscalls
 use alloc::sync::Arc;
+use crate::config::BIG_STRIDE;
 #[allow(unused)]
 use crate::{
     config::{MAX_SYSCALL_NUM,PAGE_SIZE},
@@ -231,19 +232,32 @@ pub fn sys_sbrk(size: i32) -> isize {
 
 /// YOUR JOB: Implement spawn.
 /// HINT: fork + exec =/= spawn
-pub fn sys_spawn(_path: *const u8) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    -1
+pub fn sys_spawn(path_u: *const u8) -> isize {
+    trace!("kernel: sys_spawn");
+    //注意，这个指针来自于用户态
+    let token = current_user_token();
+    let path = translated_str(token, path_u);
+    if let Some(data) = get_app_data_by_name(path.as_str()) {
+        let task = current_task().unwrap();
+        let new_task=task.spawn(data);
+        add_task(new_task.clone());
+        new_task.pid.0 as isize
+    } else {
+        -1
+    }
+
 }
 
 // YOUR JOB: Set task priority.
-pub fn sys_set_priority(_prio: isize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_set_priority NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    -1
+pub fn sys_set_priority(prio: isize) -> isize {
+    trace!("kernel: sys_set_priority");
+    //current_task().unwrap().inner_exclusive_access().priority=prio as usize;
+    if prio>=2{
+        let current=current_task().unwrap();
+        let mut inner=current.inner_exclusive_access();
+        inner.priority=prio as usize;
+        inner.pass=BIG_STRIDE/inner.priority;
+        return prio;
+    }
+    0
 }
