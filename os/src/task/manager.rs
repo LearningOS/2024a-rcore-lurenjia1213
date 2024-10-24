@@ -23,8 +23,35 @@ impl TaskManager {
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        self.ready_queue.pop_front()
-    }
+        let min_stride_task_index = self.ready_queue
+            .iter()
+            .enumerate()
+            .fold(None, |min_index, (index, task)| {
+                match min_index {
+                    None => Some(index),
+                    Some(min_idx) => {
+                        if task.inner_exclusive_access().stride < self.ready_queue[min_idx].inner_exclusive_access().stride {
+                            Some(index)
+                        } else {
+                            min_index
+                        }
+                    }
+                }
+            });
+    
+        // 如果没有找到任务，返回 None
+        let index = match min_stride_task_index {
+            Some(i) => i,
+            None => return None,
+        };
+        let task = &self.ready_queue[index];
+        let pass = task.inner_exclusive_access().pass;
+        task.inner_exclusive_access().stride += pass;
+        let removed_task = self.ready_queue.remove(index);
+        removed_task
+    }    
+    //在这过程中，gpt参与修改了部分代码
+    
 }
 
 lazy_static! {
