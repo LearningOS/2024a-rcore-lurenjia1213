@@ -7,11 +7,13 @@
 use super::__switch;
 use super::{fetch_task, TaskStatus};
 use super::{TaskContext, TaskControlBlock};
+use crate::mm::{MapPermission,VirtPageNum,VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::sync::Arc;
 use lazy_static::*;
-
+use crate::timer::get_time_ms;
+use crate::config::MAX_SYSCALL_NUM;
 /// Processor management structure
 pub struct Processor {
     ///The task currently executing on the current processor
@@ -61,6 +63,11 @@ pub fn run_tasks() {
             let mut task_inner = task.inner_exclusive_access();
             let next_task_cx_ptr = &task_inner.task_cx as *const TaskContext;
             task_inner.task_status = TaskStatus::Running;
+            //判断一下这是第几次？
+            if task_inner.first_time_run==0{
+                task_inner.first_time_run=get_time_ms();
+            }
+
             // release coming task_inner manually
             drop(task_inner);
             // release coming task TCB manually
@@ -108,4 +115,46 @@ pub fn schedule(switched_task_cx_ptr: *mut TaskContext) {
     unsafe {
         __switch(switched_task_cx_ptr, idle_task_cx_ptr);
     }
+}
+#[allow(unused)]
+///insert_framed_area
+pub fn insert_framed_area(start_va:VirtAddr,end_va:VirtAddr,perm:MapPermission){
+    current_task().unwrap().inner_exclusive_access().memory_set.insert_framed_area(start_va, end_va, perm);
+}
+#[allow(unused)]
+///原先是unmap  xxxx，改改~
+pub fn remove_framed_area(
+    
+    start_va: VirtAddr,
+    end_va: VirtAddr,
+    //permission: MapPermission,
+) {
+    
+    let start_vpn :VirtPageNum=start_va.floor();
+    let end_vpn :VirtPageNum=end_va.ceil().0.into();
+    for vpn in start_vpn.0..end_vpn.0{
+        current_task().unwrap().inner_exclusive_access().memory_set.page_table.unmap(vpn.into());
+    }
+}
+#[allow(unused)]
+///as you see
+pub fn syscall_counter(syscall_id:usize){
+    current_task().unwrap().inner_exclusive_access().syscall_times[syscall_id]+=1;
+    //drop(inner);
+    //ret
+}
+#[allow(unused)]
+///ch3
+pub fn get_first_time_run()->usize{
+    /*let inner = self.inner.exclusive_access();
+    let current = inner.current_task;
+    let ret=inner.tasks[current].first_time_run;
+    drop(inner);
+    ret*/
+    current_task().unwrap().inner_exclusive_access().first_time_run
+}
+#[allow(unused)]
+///获取系统调用计数
+pub fn get_syscall_times()->[u32;MAX_SYSCALL_NUM]{
+    current_task().unwrap().inner_exclusive_access().syscall_times
 }
