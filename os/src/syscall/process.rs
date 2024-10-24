@@ -259,5 +259,5 @@ pub fn sys_set_priority(prio: isize) -> isize {
         inner.pass=BIG_STRIDE/inner.priority;
         return prio;
     }
-    0
+    -1
 }
