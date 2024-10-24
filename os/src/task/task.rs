@@ -1,8 +1,8 @@
 //! Types related to task management & Functions for completely changing TCB
 use super::TaskContext;
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
-use crate::config::TRAP_CONTEXT_BASE;
 use crate::fs::{File, Stdin, Stdout};
+use crate::config::{TRAP_CONTEXT_BASE,MAX_SYSCALL_NUM,BIG_STRIDE};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
@@ -37,7 +37,7 @@ impl TaskControlBlock {
         inner.memory_set.token()
     }
 }
-
+///
 pub struct TaskControlBlockInner {
     /// The physical page number of the frame where the trap context is placed
     pub trap_cx_ppn: PhysPageNum,
@@ -64,6 +64,7 @@ pub struct TaskControlBlockInner {
 
     /// It is set when active exit or execution error occurs
     pub exit_code: i32,
+    ///
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
 
     /// Heap bottom
@@ -71,21 +72,46 @@ pub struct TaskControlBlockInner {
 
     /// Program break
     pub program_brk: usize,
+
+    ///第一次运行的时间
+    pub first_time_run:usize,
+    ///
+    pub syscall_times: [u32; MAX_SYSCALL_NUM],
+
+    /*
+    为每个runnable的进程设置一个当前状态stride，表示该进程当前的调度权。另外定义其对应的pass值，表示对应进程在调度后，stride 需要进行的累加值。
+    每次需要调度时，从当前 runnable 态的进程中选择 stride最小的进程调度。
+    对于获得调度的进程P，将对应的stride加上其对应的步长pass（只与进程的优先权有关系）。
+    在一段固定的时间之后，回到 2.步骤，重新调度当前stride最小的进程。
+    可以证明，如果令 P.pass =BigStride / P.priority 其中 P.priority 表示进程的优先权（大于 1），而 BigStride 表示一个预先定义的大常数，则该调度方案为每个进程分配的时间将与其优先级成正比。
+    来自实验文档
+    */
+    /// Stride 
+    pub stride:usize,
+    /// Pass 
+    pub pass:usize,
+    ///priority
+    pub priority: usize,
 }
 
 impl TaskControlBlockInner {
+    ///
     pub fn get_trap_cx(&self) -> &'static mut TrapContext {
         self.trap_cx_ppn.get_mut()
     }
+    ///
     pub fn get_user_token(&self) -> usize {
         self.memory_set.token()
     }
+    ///
     fn get_status(&self) -> TaskStatus {
         self.task_status
     }
+    ///
     pub fn is_zombie(&self) -> bool {
         self.get_status() == TaskStatus::Zombie
     }
+    ///
     pub fn alloc_fd(&mut self) -> usize {
         if let Some(fd) = (0..self.fd_table.len()).find(|fd| self.fd_table[*fd].is_none()) {
             fd
@@ -135,6 +161,11 @@ impl TaskControlBlock {
                     ],
                     heap_bottom: user_sp,
                     program_brk: user_sp,
+                    syscall_times:[0;MAX_SYSCALL_NUM],
+                    first_time_run:0,
+                    stride:0,
+                    pass:BIG_STRIDE/16,
+                    priority:16
                 })
             },
         };
@@ -216,6 +247,11 @@ impl TaskControlBlock {
                     fd_table: new_fd_table,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
+                    syscall_times:[0;MAX_SYSCALL_NUM],
+                    first_time_run:0,
+                    stride:0,
+                    pass:BIG_STRIDE/16,
+                    priority:16
                 })
             },
         });

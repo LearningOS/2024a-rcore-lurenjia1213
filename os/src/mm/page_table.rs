@@ -8,13 +8,21 @@ use bitflags::*;
 bitflags! {
     /// page table entry flags
     pub struct PTEFlags: u8 {
+        ///
         const V = 1 << 0;
+        ///
         const R = 1 << 1;
+        ///
         const W = 1 << 2;
+        ///
         const X = 1 << 3;
+        ///
         const U = 1 << 4;
+        ///
         const G = 1 << 5;
+        ///
         const A = 1 << 6;
+        ///
         const D = 1 << 7;
     }
 }
@@ -275,4 +283,13 @@ impl Iterator for UserBufferIterator {
             Some(r)
         }
     }
+}
+///虚拟转物理。
+pub fn trans_addr_v2p(token:usize,ptr:usize)->usize{
+    let page_table = PageTable::from_token(token);
+    let vpa=VirtAddr::from(ptr);
+    let vpn=vpa.floor();
+    let ppn=page_table.translate(vpn).unwrap().ppn();
+    let ppa=usize::from(ppn)<<12|vpa.page_offset();//4k页，故页偏移地址是12位2^12=4096
+    return ppa.into();
 }
