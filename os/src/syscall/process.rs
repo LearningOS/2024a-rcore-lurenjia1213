@@ -3,7 +3,7 @@
 use alloc::sync::Arc;
 #[allow(unused)]
 use crate::{
-    config::{MAX_SYSCALL_NUM,PAGE_SIZE},
+    config::{MAX_SYSCALL_NUM,PAGE_SIZE,BIG_STRIDE},
     //loader::get_app_data_by_name,
     mm::{translated_refmut, translated_str,trans_addr_v2p,MapPermission,VirtAddr,PageTable,StepByOne},
     fs::{open_file, OpenFlags},
@@ -12,7 +12,6 @@ use crate::{
         suspend_current_and_run_next, TaskStatus,get_first_time_run,get_syscall_times,insert_framed_area,remove_framed_area
     },
     timer::{get_time_ms, get_time_us},
-
 };
 
 #[repr(C)]
@@ -232,19 +231,32 @@ pub fn sys_sbrk(size: i32) -> isize {
 
 /// YOUR JOB: Implement spawn.
 /// HINT: fork + exec =/= spawn
-pub fn sys_spawn(_path: *const u8) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    -1
+pub fn sys_spawn(path_u: *const u8) -> isize {
+    trace!("kernel: sys_spawn");
+    //注意，这个指针来自于用户态
+    let token = current_user_token();
+    let path = translated_str(token, path_u);
+    if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) {//参考exec
+        let task = current_task().unwrap();
+        let all_data = app_inode.read_all();
+        let new_task=task.spawn(all_data.as_slice());
+        add_task(new_task.clone());
+        new_task.pid.0 as isize
+    } else {
+        -1
+    }
 }
 
 // YOUR JOB: Set task priority.
-pub fn sys_set_priority(_prio: isize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_set_priority NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+pub fn sys_set_priority(prio: isize) -> isize {
+    trace!("kernel: sys_set_priority");
+    //current_task().unwrap().inner_exclusive_access().priority=prio as usize;
+    if prio>=2{
+        let current=current_task().unwrap();
+        let mut inner=current.inner_exclusive_access();
+        inner.priority=prio as usize;
+        inner.pass=BIG_STRIDE/inner.priority;
+        return prio;
+    }
     -1
 }
