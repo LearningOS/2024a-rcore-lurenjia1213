@@ -76,38 +76,6 @@ pub fn sys_close(fd: usize) -> isize {
 }
 
 /// YOUR JOB: Implement fstat.
-/*
-pub fn sys_fstat(fd: usize, _st: *mut Stat) -> isize {
-
-    
-    let task = current_task().unwrap();
-    let inner = task.inner_exclusive_access();
-    if fd >= inner.fd_table.len() {
-        return -1;
-    }
-    if inner.fd_table[fd].is_none() {
-        return -1;
-    }
-    let file = Some(inner.fd_table[fd].as_ref().unwrap().clone());
-    drop(inner);
-    
-        
-        let ino = file.get_inode_id() as u64;
-        let nlink = file.get_nlink() as u32;
-        unsafe {
-            *st = Stat {
-                dev: 0,
-                ino,
-                mode: StatMode::FILE,
-                nlink,
-                pad: [0; 7],
-            };
-        }
-        0
-     
-    
-  
-} */
 pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     trace!("kernel:pid[{}] sys_fstat", current_task().unwrap().pid.0);
     let task = current_task().unwrap();
@@ -140,18 +108,33 @@ pub fn sys_linkat(_old_name: *const u8, _new_name: *const u8) -> isize {
     if old_name == new_name {
         return -1;
     }
-    ROOT_INODE.link(new_name.as_str(),old_name.as_str());
 
-
-
-
-    0
+    if let Some(inode) = open_file(old_name.as_str(), OpenFlags::RDONLY) {
+        //let mut inner = task.inner_exclusive_access();
+        //let fd = inner.alloc_fd();
+        //inner.fd_table[fd] = Some(inode);
+        //fd as isize
+        drop(inode);
+        ROOT_INODE.link(new_name.as_str(),old_name.as_str());
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 /// YOUR JOB: Implement unlinkat.
 pub fn sys_unlinkat(_name: *const u8) -> isize {
     let token = current_user_token();
     let name=translated_str(token, _name);
-    ROOT_INODE.unlink(name.as_str());
-    0
+    if let Some(inode) = open_file(name.as_str(), OpenFlags::RDONLY) {
+        //let mut inner = task.inner_exclusive_access();
+        //let fd = inner.alloc_fd();
+        //inner.fd_table[fd] = Some(inode);
+        //fd as isize
+        drop(inode);
+        ROOT_INODE.unlink(name.as_str());
+        return 0;
+    } else {
+        return -1;
+    }
 }
