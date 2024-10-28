@@ -2,6 +2,7 @@ use super::{
     block_cache_sync_all, get_block_cache, BlockDevice, DirEntry, DiskInode, DiskInodeType,
     EasyFileSystem, DIRENT_SZ,
 };
+use crate::BLOCK_SZ;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -89,6 +90,55 @@ impl Inode {
             v.push(fs.alloc_data());
         }
         disk_inode.increase_size(new_size, v, &self.block_device);
+    }
+        /// Create inode under current inode by name
+    pub fn link(&self, new_name: &str,old_name: &str) {
+        
+        //这里发生过死锁，艹，前面被锁了，get_node_id也有一次
+        let inode =self.find(old_name);
+        
+        let inode_id=inode.clone().unwrap().get_inode_id();
+        let mut  fs = self.fs.lock();
+        self.modify_disk_inode(|root_inode| {
+            let file_count = (root_inode.size as usize) / DIRENT_SZ;
+            let new_size = (file_count + 1) * DIRENT_SZ;
+            self.increase_size(new_size as u32, root_inode, &mut fs);
+            let dirent = DirEntry::new(new_name,inode_id);
+            root_inode.write_at(
+                file_count * DIRENT_SZ,
+                dirent.as_bytes(),
+                &self.block_device,
+            );
+        });
+        inode.unwrap().modify_disk_inode(|inode|{
+            inode.nlink+=1;
+        });
+        block_cache_sync_all();
+    }
+
+
+    ///
+    pub fn unlink(&self, name: &str) {
+
+        let inode=self.find(name);
+        inode.unwrap().modify_disk_inode(|inode|{
+            inode.nlink-=1;
+        });
+        self.modify_disk_inode(|root_inode| {
+            let file_count = (root_inode.size as usize) / DIRENT_SZ;
+            for i in 0..file_count {//遍历，并且找到这name
+                let mut dirent = DirEntry::empty();
+                    root_inode.read_at(i * DIRENT_SZ, dirent.as_bytes_mut(), &self.block_device,);//wtf
+                if dirent.name() == name {
+                    root_inode.write_at(i * DIRENT_SZ, DirEntry::empty().as_bytes(), &self.block_device);//clean
+                    break;
+                }
+            }
+        });
+        //let (block_id, block_offset) = fs.get_disk_inode_pos(new_inode_id);
+        block_cache_sync_all();
+        // return inode
+        // release efs lock automatically by compiler 与上无关
     }
     /// Create inode under current inode by name
     pub fn create(&self, name: &str) -> Option<Arc<Inode>> {
@@ -183,4 +233,49 @@ impl Inode {
         });
         block_cache_sync_all();
     }
+    ///ret u32 inode id
+    pub fn get_inode_id(&self)->u32{
+        let fs = self.fs.lock();
+        let inode_size=core::mem::size_of::<DiskInode>();
+        let inode_per_blk:u32=BLOCK_SZ as u32/inode_size as u32;
+        let blk_offset_out=self.block_id as u32-fs.inode_area_start_block as u32;//我真服了，已经混乱了
+        let inode_id=blk_offset_out*inode_per_blk+ self.block_offset as u32/inode_size as u32;
+        inode_id 
+    }
+    ///get nlink
+    pub fn get_nlink(&self)->u32{
+        let _fs = self.fs.lock();
+        
+        self.read_disk_inode(|disk_inode| {
+            
+            let v: u32 = disk_inode.nlink;
+
+            v
+        })
+    }
 }
+/*
+    pub fn ls(&self) -> Vec<String> {
+        let _fs = self.fs.lock();
+        self.read_disk_inode(|disk_inode| {
+            let file_count = (disk_inode.size as usize) / DIRENT_SZ;
+            let mut v: Vec<String> = Vec::new();
+            for i in 0..file_count {
+                let mut dirent = DirEntry::empty();
+                assert_eq!(
+                    disk_inode.read_at(i * DIRENT_SZ, dirent.as_bytes_mut(), &self.block_device,),
+                    DIRENT_SZ,
+                );
+                v.push(String::from(dirent.name()));
+            }
+            v
+        })
+    }
+pub struct Inode {
+    block_id: usize,
+    block_offset: usize,
+    fs: Arc<Mutex<EasyFileSystem>>,
+    block_device: Arc<dyn BlockDevice>,
+}
+
+*/

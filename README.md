@@ -51,3 +51,6 @@ $ git checkout ch<Number>
 $ cd ci-user
 $ make test CHAPTER=<Number>
 ```
+
+
+#fuse是打包用的，看起来不被内核直接使用
