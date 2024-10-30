@@ -216,7 +216,15 @@ pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
         .unwrap()
         .get_mut()
 }
-
+///虚拟转物理。
+pub fn trans_addr_v2p(token:usize,ptr:usize)->usize{
+    let page_table = PageTable::from_token(token);
+    let vpa=VirtAddr::from(ptr);
+    let vpn=vpa.floor();
+    let ppn=page_table.translate(vpn).unwrap().ppn();
+    let ppa=usize::from(ppn)<<12|vpa.page_offset();//4k页，故页偏移地址是12位2^12=4096
+    return ppa.into();
+}
 /// An abstraction over a buffer passed from user space to kernel space
 pub struct UserBuffer {
     /// A list of buffers
