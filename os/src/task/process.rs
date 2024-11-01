@@ -50,10 +50,26 @@ pub struct ProcessControlBlockInner {
     /// condvar list
     pub condvar_list: Vec<Option<Arc<Condvar>>>,
     ///deadlock check
-    pub check_dl:bool
+    pub check_dl:bool,
+    /*
+    
+    ///需求矩阵，n * m 的矩阵，表示每个线程还需要的各类资源数量。 Need[i,j] = d，则表示线程 i 还需要第 j 类资源的数量为 d 。
+    pub m_need:Vec<Vec<usize>>,
+    ///分配矩阵，n * m 矩阵，表示每类资源已分配给每个线程的资源数。 Allocation[i,j] = g，则表示线程 i 当前己分得第 j 类资源的数量为 g。
+    pub m_allocation:Vec<Vec<usize>>, 
+    
+    */
+    ////可利用资源向量 含有 m 个元素的一维数组，每个元素代表可利用的某一类资源的数目， 其初值是该类资源的全部可用数目，其值随该类资源的分配和回收而动态地改变。 Available[j] = k，表示第 j 类资源的可用数量为 k。
+    //pub available:Vec<usize>,这个没必要啊
+    /***********************************************************************************/
+    ///需求矩阵，n * m 的矩阵，表示每个线程还需要的各类资源数量。 Need[i,j] = d，则表示线程 i 还需要第 j 类资源的数量为 d 。
+    pub s_need:Vec<Vec<usize>>,
+    ///分配矩阵，n * m 矩阵，表示每类资源已分配给每个线程的资源数。 Allocation[i,j] = g，则表示线程 i 当前己分得第 j 类资源的数量为 g。
+    pub s_allocation:Vec<Vec<usize>>,
+
 }
 
-impl ProcessControlBlockInner {
+impl ProcessControlBlockInner {//进程
     #[allow(unused)]
     /// get the address of app's page table
     pub fn get_user_token(&self) -> usize {
@@ -121,7 +137,10 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
-                    check_dl:false
+                    check_dl:false,
+                    //available:Vec::new()
+                    s_allocation:Vec::new(),
+                    s_need:Vec::new()
                 })
             },
         });
@@ -248,7 +267,11 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
-                    check_dl:false
+                    check_dl:false,
+
+                    //available:Vec::new()
+                    s_allocation:Vec::new(),
+                    s_need:Vec::new()
                 })
             },
         });

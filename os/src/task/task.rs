@@ -8,7 +8,7 @@ use alloc::sync::{Arc, Weak};
 use core::cell::RefMut;
 
 /// Task control block structure
-pub struct TaskControlBlock {
+pub struct TaskControlBlock {//内核对线程进行管理的核心数据结构,最小调度单元
     /// immutable
     pub process: Weak<ProcessControlBlock>,
     /// Kernel stack corresponding to PID

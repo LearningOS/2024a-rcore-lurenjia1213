@@ -1,5 +1,6 @@
 use crate::sync::{Condvar, Mutex, MutexBlocking, MutexSpin, Semaphore};
-use crate::task::{block_current_and_run_next, current_process, current_task};
+#[allow(unused)]
+use crate::task::{block_current_and_run_next, current_process, current_task,ProcessControlBlock};
 use crate::timer::{add_timer, get_time_ms};
 use alloc::sync::Arc;
 /// sleep syscall
@@ -22,7 +23,11 @@ pub fn sys_sleep(ms: usize) -> isize {
     0
 }
 /// mutex create syscall
-pub fn sys_mutex_create(blocking: bool) -> isize {
+pub fn sys_mutex_create(blocking: bool) -> isize {/*
+    false  MutexSpin 自旋锁
+    true   MutexBlocking 阻塞式互斥锁
+    https://stackoverflow.com/questions/5869825/when-should-one-use-a-spinlock-instead-of-mutex
+     */
     trace!(
         "kernel:pid[{}] tid[{}] sys_mutex_create",
         current_task().unwrap().process.upgrade().unwrap().getpid(),
@@ -45,18 +50,18 @@ pub fn sys_mutex_create(blocking: bool) -> isize {
         .mutex_list
         .iter()
         .enumerate()
-        .find(|(_, item)| item.is_none())
-        .map(|(id, _)| id)
+        .find(|(_, item)| item.is_none()) //空？
+        .map(|(id, _)| id)//空！位置
     {
-        process_inner.mutex_list[id] = mutex;
+        process_inner.mutex_list[id] = mutex;//如果向量中有空的元素，就在这个空元素的位置创建一个锁；
         id as isize
     } else {
-        process_inner.mutex_list.push(mutex);
+        process_inner.mutex_list.push(mutex);//如果向量满了，就在向量中push新的锁；
         process_inner.mutex_list.len() as isize - 1
     }
 }
 /// mutex lock syscall
-pub fn sys_mutex_lock(mutex_id: usize) -> isize {
+pub fn sys_mutex_lock(mutex_id: usize) -> isize {//你需要在这进行检查
     trace!(
         "kernel:pid[{}] tid[{}] sys_mutex_lock",
         current_task().unwrap().process.upgrade().unwrap().getpid(),
@@ -71,6 +76,9 @@ pub fn sys_mutex_lock(mutex_id: usize) -> isize {
     let process = current_process();
     let process_inner = process.inner_exclusive_access();
     let mutex = Arc::clone(process_inner.mutex_list[mutex_id].as_ref().unwrap());
+    if process_inner.check_dl&&mutex.is_locked(){
+        return -0xDEAD;
+    }
     drop(process_inner);
     drop(process);
     mutex.lock();
