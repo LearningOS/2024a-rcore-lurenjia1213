@@ -59,13 +59,13 @@ pub struct ProcessControlBlockInner {
     pub m_allocation:Vec<Vec<usize>>, 
     
     */
-    ////可利用资源向量 含有 m 个元素的一维数组，每个元素代表可利用的某一类资源的数目， 其初值是该类资源的全部可用数目，其值随该类资源的分配和回收而动态地改变。 Available[j] = k，表示第 j 类资源的可用数量为 k。
-    //pub available:Vec<usize>,这个没必要啊
+    ///可利用资源向量 含有 m 个元素的一维数组，每个元素代表可利用的某一类资源的数目， 其初值是该类资源的全部可用数目，其值随该类资源的分配和回收而动态地改变。 Available[j] = k，表示第 j 类资源的可用数量为 k。
+    pub available:Vec<usize>,//很有必要
     /***********************************************************************************/
     ///需求矩阵，n * m 的矩阵，表示每个线程还需要的各类资源数量。 Need[i,j] = d，则表示线程 i 还需要第 j 类资源的数量为 d 。
-    pub s_need:Vec<Vec<usize>>,
+    pub need:Vec<Vec<usize>>,
     ///分配矩阵，n * m 矩阵，表示每类资源已分配给每个线程的资源数。 Allocation[i,j] = g，则表示线程 i 当前己分得第 j 类资源的数量为 g。
-    pub s_allocation:Vec<Vec<usize>>,
+    pub allocation:Vec<Vec<usize>>,
 
 }
 
@@ -139,8 +139,9 @@ impl ProcessControlBlock {
                     condvar_list: Vec::new(),
                     check_dl:false,
                     //available:Vec::new()
-                    s_allocation:Vec::new(),
-                    s_need:Vec::new()
+                    allocation:Vec::new(),
+                    need:Vec::new(),
+                    available:Vec::new()
                 })
             },
         });
@@ -268,10 +269,10 @@ impl ProcessControlBlock {
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
                     check_dl:false,
-
                     //available:Vec::new()
-                    s_allocation:Vec::new(),
-                    s_need:Vec::new()
+                    allocation:vec![Vec::new()],
+                    need:vec![Vec::new()],
+                    available:Vec::new()
                 })
             },
         });
