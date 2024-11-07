@@ -1,7 +1,9 @@
+#[allow(unused)]
 use crate::{
     config::MAX_SYSCALL_NUM,
     fs::{open_file, OpenFlags},
-    mm::{translated_ref, translated_refmut, translated_str,trans_addr_v2p},
+
+    mm::{translated_ref, translated_refmut, translated_str,trans_addr_v2p,write_byte_buffer},
     task::{
         current_process, current_task, current_user_token, exit_current_and_run_next, pid2process,
         suspend_current_and_run_next, SignalFlags, TaskStatus,
@@ -163,6 +165,7 @@ pub fn sys_kill(pid: usize, signal: u32) -> isize {
 /// YOUR JOB: get time with second and microsecond
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
+/*
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {//来自用户态的指针
     trace!("kernel: sys_get_time");
     let us = get_time_us();
@@ -173,6 +176,22 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {//来自用户态�
             usec: us % 1_000_000,
         };
     }
+    0
+} */
+pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {//来自用户态的指针
+    trace!("kernel: sys_get_time");
+    let us = get_time_us();
+    let ktv=TimeVal {
+        sec: us / 1000000,
+        usec: us % 1000000,
+    };
+    let len = core::mem::size_of::<TimeVal>();
+    let token = current_user_token();
+    write_byte_buffer(token, _ts as usize, &ktv as *const TimeVal as usize, len);
+    
+    //unsafe{
+      //  core::ptr::copy_nonoverlapping(&ktv as *const TimeVal as *mut u8, dst as *mut u8 , len);
+    //}
     0
 }
 

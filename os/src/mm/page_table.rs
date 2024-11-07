@@ -4,7 +4,6 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::*;
-
 bitflags! {
     /// page table entry flags
     pub struct PTEFlags: u8 {
@@ -224,6 +223,33 @@ pub fn trans_addr_v2p(token:usize,ptr:usize)->usize{
     let ppn=page_table.translate(vpn).unwrap().ppn();
     let ppa=usize::from(ppn)<<12|vpa.page_offset();//4k页，故页偏移地址是12位2^12=4096
     return ppa.into();
+}
+/// 跨页 修改,只是为二战准备
+/// ptr :用户态的指针，kptr 内核的
+#[allow(unused)]
+pub fn write_byte_buffer(token: usize, ptr: usize, kptr: usize ,len: usize){
+    let page_table = PageTable::from_token(token);
+    let mut start = ptr as usize;
+    let end = start + len;
+    while start < end {
+        let start_va = VirtAddr::from(start);
+        let mut vpn = start_va.floor();
+        let ppn = page_table.translate(vpn).unwrap().ppn();
+        vpn.step();
+        let mut end_va: VirtAddr = vpn.into();
+        end_va = end_va.min(VirtAddr::from(end));
+
+        let write_len = end_va.page_offset().min(end - start);
+        unsafe {
+            let dest = ppn.0 + start_va.page_offset(); 
+            let src = kptr + (start - ptr); 
+            
+            core::ptr::copy_nonoverlapping(src as *const u8, (usize::from(ppn)<<12|start_va.page_offset()) as *mut u8, write_len);
+        }//妈的要注意物理页内的偏移
+        debug!("start_va:{} start:{} end_va:{} ",usize::from(start_va),start,usize::from(end_va));
+        start = end_va.into();
+    }
+    
 }
 /// An abstraction over a buffer passed from user space to kernel space
 pub struct UserBuffer {
