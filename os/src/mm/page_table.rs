@@ -238,15 +238,12 @@ pub fn write_byte_buffer(token: usize, ptr: usize, kptr: usize ,len: usize){
         vpn.step();
         let mut end_va: VirtAddr = vpn.into();
         end_va = end_va.min(VirtAddr::from(end));
-
         let write_len = end_va.page_offset().min(end - start);
+        let dest = (usize::from(ppn)<<12|start_va.page_offset()) as *mut u8; 
+        let src = (kptr + (start - ptr)) as *const u8; 
         unsafe {
-            let dest = ppn.0 + start_va.page_offset(); 
-            let src = kptr + (start - ptr); 
-            
-            core::ptr::copy_nonoverlapping(src as *const u8, (usize::from(ppn)<<12|start_va.page_offset()) as *mut u8, write_len);
+            core::ptr::copy_nonoverlapping(src , dest, write_len);
         }//妈的要注意物理页内的偏移
-        debug!("start_va:{} start:{} end_va:{} ",usize::from(start_va),start,usize::from(end_va));
         start = end_va.into();
     }
     
